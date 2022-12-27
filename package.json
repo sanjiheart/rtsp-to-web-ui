@@ -1,0 +1,11 @@
+{
+  "name": "rtsp-to-web-demo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "bootstrap": "^5.2.3",
+    "hls.js": "^1.2.9",
+    "vue": "^3.2.45"
+  }
+}
