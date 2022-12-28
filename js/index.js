@@ -3,6 +3,7 @@ const { createApp } = Vue
 createApp({
     data() {
         return {
+            auth: btoa(sessionStorage.getItem('dev-auth')),
             streams: {},
             hlsUrl: 'http://127.0.0.1:8083/stream/27aec28e-6181-4753-9acd-0456a75f0289/channel/0/hls/live/index.m3u8',
             hls: null,
@@ -12,12 +13,13 @@ createApp({
             mseQueue: [],
             mseSourceBuffer: null,
             mseStreamingStarted: false,
-            videoSound: false
+            videoSound: false,
+            mseWs: null
         }
     },
     methods: {
         listStreams() {
-            axios.defaults.headers.common['Authorization'] = `Basic Z2FuOlN1cGVyR2Fu`;
+            axios.defaults.headers.common['Authorization'] = `Basic ${this.auth}`;
             axios.get(`http://localhost:8083/streams`).then(response => {
                 this.streams = response.data.payload;
             });
@@ -30,25 +32,29 @@ createApp({
             }
             this.hls = new Hls();
             this.hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                // console.log('video and hls.js are now bound together!');
+                console.log('video and hls.js are now bound together!');
             });
             this.hls.attachMedia(video);
             this.hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                // console.log('manifest loaded, found ' + data.levels.length + ' quality level');
+                console.log('manifest loaded, found ' + data.levels.length + ' quality level');
             });
             this.hls.loadSource(url);
-            video.play();
+            video.load();
         },
         playMse(url) {
+            if (!!this.mse) {
+                this.mseWs.close();
+                this.mse.endOfStream();
+            }
             this.mse = new MediaSource();
             this.mseSrc = window.URL.createObjectURL(this.mse);
             this.mse.addEventListener('sourceopen', () => {
-                let ws = new WebSocket(url);
-                ws.binaryType = "arraybuffer";
-                ws.onopen = event => {
+                this.mseWs = new WebSocket(url);
+                this.mseWs.binaryType = "arraybuffer";
+                this.mseWs.onopen = event => {
                     console.log('Connect to ws');
                 }
-                ws.onmessage = event => {
+                this.mseWs.onmessage = event => {
                     let data = new Uint8Array(event.data);
                     if (data[0] == 9) {
                         decoded_arr = data.slice(1);
